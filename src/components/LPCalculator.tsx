@@ -16,6 +16,7 @@ import {
 type TokenSymbol = string;
 type Price = number;
 type LiquidityValue = number;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 type Percentage = number;
 
 // Input State Interface
