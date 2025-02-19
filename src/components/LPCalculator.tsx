@@ -1,5 +1,5 @@
 "use client"
-import React, { useState } from 'react';
+import React, { useState, useMemo, ChangeEvent } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -12,20 +12,60 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
+// Type Definitions
+type TokenSymbol = string;
+type Price = number;
+type LiquidityValue = number;
+type Percentage = number;
+
+// Input State Interface
+interface InputState {
+  token1Price: string;
+  token2Price: string;
+  totalLiquidity: string;
+  upperBound: string;
+  lowerBound: string;
+  token1Symbol: TokenSymbol;
+  token2Symbol: TokenSymbol;
+}
+
+// Position and Calculation Interfaces
+interface PositionDetails {
+  token1Amount: number;
+  token2Amount: number;
+  token1ValueUSD: number;
+  token2ValueUSD: number;
+  token1Hedge: number;
+  token2Hedge: number;
+  pairPrice: number;
+}
+
+interface PriceRange {
+  lower: number;
+  current: number;
+  upper: number;
+}
+
+interface CalculationResults extends PositionDetails {
+  priceRange: PriceRange;
+}
+
+// Input Component Props
 interface InputWithTooltipProps {
   label: string;
   value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onChange: (e: ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string;
-  type?: string;
+  type?: 'text' | 'number';
   tooltipContent?: string;
 }
 
+// Input Component with Tooltip
 const InputWithTooltip: React.FC<InputWithTooltipProps> = ({ 
   label, 
   value, 
   onChange, 
-  placeholder, 
+  placeholder = '', 
   type = 'text', 
   tooltipContent 
 }) => {
@@ -56,8 +96,10 @@ const InputWithTooltip: React.FC<InputWithTooltipProps> = ({
   );
 };
 
+// Main LP Calculator Component
 const LPCalculator = () => {
-  const [inputs, setInputs] = useState({
+  // Initial State
+  const [inputs, setInputs] = useState<InputState>({
     token1Price: '0.7110',
     token2Price: '2500',
     totalLiquidity: '10000',
@@ -67,83 +109,67 @@ const LPCalculator = () => {
     token2Symbol: 'WETH'
   });
 
-  const [results, setResults] = useState(null);
+  // Results and Error State
+  const [results, setResults] = useState<CalculationResults | null>(null);
   const [error, setError] = useState('');
 
-  const validateInputs = () => {
-    const errors = [];
+  // Memoized Calculation Function
+  const calculatePositions = useMemo(() => {
+    return (
+      token1PriceUSD: Price, 
+      token2PriceUSD: Price, 
+      totalValue: LiquidityValue
+    ): PositionDetails => {
+      // Calculate token amounts based on 50-50 USD value split
+      const valuePerSide = totalValue / 2;
+      
+      const token1Amount = valuePerSide / token1PriceUSD;
+      const token2Amount = valuePerSide / token2PriceUSD;
+      
+      // Calculate hedge amounts (50% of each position)
+      const token1Hedge = token1Amount / 2;
+      const token2Hedge = token2Amount / 2;
+      
+      return {
+        token1Amount,
+        token2Amount,
+        token1ValueUSD: token1Amount * token1PriceUSD,
+        token2ValueUSD: token2Amount * token2PriceUSD,
+        token1Hedge,
+        token2Hedge,
+        pairPrice: token1PriceUSD / token2PriceUSD
+      };
+    };
+  }, []); // Empty dependency array as this is a pure function
 
-    // Validate token prices
-    if (isNaN(parseFloat(inputs.token1Price)) || parseFloat(inputs.token1Price) <= 0) {
-      errors.push('Token 1 price must be a positive number');
-    }
-    if (isNaN(parseFloat(inputs.token2Price)) || parseFloat(inputs.token2Price) <= 0) {
-      errors.push('Token 2 price must be a positive number');
-    }
-
-    // Validate total liquidity
-    if (isNaN(parseFloat(inputs.totalLiquidity)) || parseFloat(inputs.totalLiquidity) <= 0) {
-      errors.push('Total liquidity must be a positive number');
-    }
-
-    // Validate bounds
-    if (isNaN(parseFloat(inputs.upperBound)) || parseFloat(inputs.upperBound) < 0) {
-      errors.push('Upper bound must be a non-negative number');
-    }
-    if (isNaN(parseFloat(inputs.lowerBound)) || parseFloat(inputs.lowerBound) < 0) {
-      errors.push('Lower bound must be a non-negative number');
-    }
-
-    // Validate symbols
-    if (!inputs.token1Symbol.trim()) {
-      errors.push('Token 1 symbol is required');
-    }
-    if (!inputs.token2Symbol.trim()) {
-      errors.push('Token 2 symbol is required');
-    }
-
-    return errors;
-  };
-
-const calculatePositions = (
-  token1PriceUSD: number, 
-  token2PriceUSD: number, 
-  totalValue: number
-) => {
-  // Calculate token amounts based on 50-50 USD value split
-  const valuePerSide = totalValue / 2;
-  
-  const token1Amount = valuePerSide / token1PriceUSD;
-  const token2Amount = valuePerSide / token2PriceUSD;
-  
-  // Calculate hedge amounts (50% of each position)
-  const token1Hedge = token1Amount / 2;
-  const token2Hedge = token2Amount / 2;
-  
-  return {
-    token1Amount,
-    token2Amount,
-    token1ValueUSD: token1Amount * token1PriceUSD,
-    token2ValueUSD: token2Amount * token2PriceUSD,
-    token1Hedge,
-    token2Hedge,
-    pairPrice: token1PriceUSD / token2PriceUSD
-  };
-};
-
+  // Calculation Handler
   const handleCalculate = () => {
     try {
-      // Validate inputs first
-      const validationErrors = validateInputs();
-      if (validationErrors.length > 0) {
-        throw new Error(validationErrors.join('. '));
-      }
+      // Parse and validate inputs with more robust checks
+      const parseNumericInput = (value: string, fieldName: string): number => {
+        const parsed = parseFloat(value);
+        if (isNaN(parsed)) {
+          throw new Error(`Invalid ${fieldName}: must be a number`);
+        }
+        if (parsed <= 0 && fieldName !== 'upperBound' && fieldName !== 'lowerBound') {
+          throw new Error(`${fieldName} must be a positive number`);
+        }
+        return parsed;
+      };
 
-      const token1PriceUSD = parseFloat(inputs.token1Price);
-      const token2PriceUSD = parseFloat(inputs.token2Price);
-      const totalValue = parseFloat(inputs.totalLiquidity);
-      const upperPct = parseFloat(inputs.upperBound);
-      const lowerPct = parseFloat(inputs.lowerBound);
+      const token1PriceUSD = parseNumericInput(inputs.token1Price, 'Token 1 Price');
+      const token2PriceUSD = parseNumericInput(inputs.token2Price, 'Token 2 Price');
+      const totalValue = parseNumericInput(inputs.totalLiquidity, 'Total Liquidity');
+      const upperPct = parseNumericInput(inputs.upperBound, 'Upper Bound');
+      const lowerPct = parseNumericInput(inputs.lowerBound, 'Lower Bound');
+
+      // Additional symbol validation
+      if (!inputs.token1Symbol.trim()) {
+        throw new Error('Token 1 Symbol cannot be empty');
+      }
+      if (!inputs.token2Symbol.trim()) {
+        throw new Error('Token 2 Symbol cannot be empty');
+      }
 
       const positions = calculatePositions(token1PriceUSD, token2PriceUSD, totalValue);
       const pairPrice = positions.pairPrice;
@@ -158,7 +184,11 @@ const calculatePositions = (
       });
       setError('');
     } catch (err) {
-      setError(err.message);
+      setError(
+        err instanceof Error 
+          ? err.message 
+          : 'An unexpected error occurred during calculation'
+      );
       setResults(null);
     }
   };
@@ -249,14 +279,16 @@ const calculatePositions = (
                   </div>
                 </div>
                 
-                <div className="p-4 bg-secondary rounded-lg">
-                  <h3 className="font-medium mb-1">Price Range ({inputs.token1Symbol}/{inputs.token2Symbol})</h3>
-                  <div className="space-y-2 text-sm">
-                    <p>Lower: {results.priceRange.lower.toFixed(6)}</p>
-                    <p>Current: {results.priceRange.current.toFixed(6)}</p>
-                    <p>Upper: {results.priceRange.upper.toFixed(6)}</p>
+                {results.priceRange && (
+                  <div className="p-4 bg-secondary rounded-lg">
+                    <h3 className="font-medium mb-1">Price Range ({inputs.token1Symbol}/{inputs.token2Symbol})</h3>
+                    <div className="space-y-2 text-sm">
+                      <p>Lower: {results.priceRange.lower.toFixed(6)}</p>
+                      <p>Current: {results.priceRange.current.toFixed(6)}</p>
+                      <p>Upper: {results.priceRange.upper.toFixed(6)}</p>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
 
