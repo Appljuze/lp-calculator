@@ -105,27 +105,31 @@ const LPCalculator = () => {
     return errors;
   };
 
-  const calculatePositions = (token1PriceUSD, token2PriceUSD, totalValue) => {
-    // Calculate token amounts based on 50-50 USD value split
-    const valuePerSide = totalValue / 2;
-    
-    const token1Amount = valuePerSide / token1PriceUSD;
-    const token2Amount = valuePerSide / token2PriceUSD;
-    
-    // Calculate hedge amounts (50% of each position)
-    const token1Hedge = token1Amount / 2;
-    const token2Hedge = token2Amount / 2;
-    
-    return {
-      token1Amount,
-      token2Amount,
-      token1ValueUSD: token1Amount * token1PriceUSD,
-      token2ValueUSD: token2Amount * token2PriceUSD,
-      token1Hedge,
-      token2Hedge,
-      pairPrice: token1PriceUSD / token2PriceUSD
-    };
+const calculatePositions = (
+  token1PriceUSD: number, 
+  token2PriceUSD: number, 
+  totalValue: number
+) => {
+  // Calculate token amounts based on 50-50 USD value split
+  const valuePerSide = totalValue / 2;
+  
+  const token1Amount = valuePerSide / token1PriceUSD;
+  const token2Amount = valuePerSide / token2PriceUSD;
+  
+  // Calculate hedge amounts (50% of each position)
+  const token1Hedge = token1Amount / 2;
+  const token2Hedge = token2Amount / 2;
+  
+  return {
+    token1Amount,
+    token2Amount,
+    token1ValueUSD: token1Amount * token1PriceUSD,
+    token2ValueUSD: token2Amount * token2PriceUSD,
+    token1Hedge,
+    token2Hedge,
+    pairPrice: token1PriceUSD / token2PriceUSD
   };
+};
 
   const handleCalculate = () => {
     try {
