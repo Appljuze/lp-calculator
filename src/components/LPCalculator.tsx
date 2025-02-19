@@ -12,7 +12,16 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
-const InputWithTooltip = ({ 
+interface InputWithTooltipProps {
+  label: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  placeholder?: string;
+  type?: string;
+  tooltipContent?: string;
+}
+
+const InputWithTooltip: React.FC<InputWithTooltipProps> = ({ 
   label, 
   value, 
   onChange, 
